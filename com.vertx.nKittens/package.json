@@ -1,0 +1,11 @@
+{
+  "name": "com.vertx.nkittens",
+  "displayName":  "nKittens",
+  "version": "1.0.0",
+  "unity": "2019.1",
+  "description": "nKittens is an EditorTool that injects kittens into editor windows.",
+  "keywords": [ "Editor", "Window", "Kittens" ],
+  "category": "Unhelpful",
+  "dependencies": {
+  }
+}
