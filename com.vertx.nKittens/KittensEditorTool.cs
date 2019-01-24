@@ -118,7 +118,7 @@ namespace Vertx
 		private const float holdTimeMax = 10;
 
 		private const float waitTimeMin = 0;
-		private const float waitTimeMax = 120;
+		private const float waitTimeMax = 40;
 
 		private Image[] kittenVisualElements;
 
