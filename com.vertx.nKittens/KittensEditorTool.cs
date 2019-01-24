@@ -9,7 +9,6 @@ using UnityEditor.EditorTools;
 using UnityEditor.ShortcutManagement;
 using UnityEngine;
 using UnityEngine.UIElements;
-using Vertx.Constants;
 using static Vertx.Constants.KittensImages;
 using Random = UnityEngine.Random;
 
@@ -23,7 +22,7 @@ namespace Vertx
 
 		void OnEnable()
 		{
-			_iconContent = new GUIContent(LoadTextureFromString(Icon), "Kittens!");
+			_iconContent = new GUIContent(LoadTextureFromString(Icon), "Kittens!"); // Very sad 🐱 does not display properly. Very funny that this can inject a kitten into a tooltip though.
 
 			kittenVisualElements = new Image[kittens.Length];
 			for (int i = 0; i < kittenVisualElements.Length; i++)
@@ -160,8 +159,11 @@ namespace Vertx
 				Image kittenVisualElement = kittenVisualElements[Random.Range(0, kittenVisualElements.Length)];
 				
 				randomRoot.Add(kittenVisualElement);
-				float w = kittenVisualElement.image.width;
-				float h = kittenVisualElement.image.height;
+				float wRatio = Mathf.Min(kittenVisualElement.image.width, randomRoot.layout.width) / kittenVisualElement.image.width;
+				float hRatio = Mathf.Min(kittenVisualElement.image.height, randomRoot.layout.height) / kittenVisualElement.image.height;
+				float minRatio = Mathf.Min(wRatio, hRatio);
+				float w = kittenVisualElement.image.width * minRatio;
+				float h = kittenVisualElement.image.height * minRatio;
 				kittenVisualElement.style.width = w;
 				kittenVisualElement.style.height = h;
 

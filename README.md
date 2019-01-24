@@ -1,2 +1,2 @@
 # EditorToolsKittens
-An EditorTool for injecting kittens into editor windows.
+A complete normal EditorTool. Nothing to see here. 🐱
