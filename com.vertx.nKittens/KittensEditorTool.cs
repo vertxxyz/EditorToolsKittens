@@ -1,12 +1,16 @@
-﻿using System;
+﻿//#define VERBOSE_DEBUGGING
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.EditorTools;
+using UnityEditor.ShortcutManagement;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Vertx.Constants;
+using static Vertx.Constants.KittensImages;
 using Random = UnityEngine.Random;
 
 namespace Vertx
@@ -17,10 +21,41 @@ namespace Vertx
 		private GUIContent _iconContent;
 		public override GUIContent toolbarIcon => _iconContent;
 
-		void OnEnable() => _iconContent = new GUIContent(LoadTextureFromString(KittensImages.Icon), "Kittens!");
-		
-		private void OnDisable() => DestroyImmediate(_iconContent.image);
-				
+		void OnEnable()
+		{
+			_iconContent = new GUIContent(LoadTextureFromString(Icon), "Kittens!");
+
+			kittenVisualElements = new Image[kittens.Length];
+			for (int i = 0; i < kittenVisualElements.Length; i++)
+			{
+				Texture2D kitten = LoadTextureFromString(kittens[i].Image);
+				kittenVisualElements[i] = new Image
+				{
+					image = kitten,
+					scaleMode = ScaleMode.StretchToFill,
+					style =
+					{
+						position = Position.Absolute
+					}
+				};
+			}
+		}
+
+		[Shortcut("Kittens!", KeyCode.K, ShortcutModifiers.Action)]
+		private static void EnableKittens() => EditorTools.SetActiveTool<KittensEditorTool>();
+
+		void RemoveAllKittensFromHierarchies()
+		{
+			foreach (Image kittenVisualElement in kittenVisualElements)
+				kittenVisualElement.RemoveFromHierarchy();
+		}
+
+		private void OnDisable()
+		{
+			DestroyImmediate(_iconContent.image);
+			RemoveAllKittensFromHierarchies();
+		}
+
 		public override void OnActivate()
 		{
 			iterateOnUpdate = IterateOnUpdate();
@@ -33,17 +68,19 @@ namespace Vertx
 		{
 			iterateOnUpdate = null;
 			EditorApplication.update -= Update;
+			RemoveAllKittensFromHierarchies();
 		}
 
 		#region Iterator Logic
 
 		private IEnumerator iterateOnUpdate;
-		private double waitToTime;
-		private double updateStartTime;
+		private float waitToTime;
+		private float updateStartTime;
+
 		private void Update()
 		{
-			double updateTime = Time.realtimeSinceStartup - updateStartTime;
-			
+			float updateTime = Time.realtimeSinceStartup - updateStartTime;
+
 			if (waitToTime > updateTime)
 				return;
 
@@ -61,7 +98,7 @@ namespace Vertx
 				}
 			}
 		}
-		
+
 		private struct WaitForSeconds
 		{
 			public readonly float Seconds;
@@ -72,41 +109,161 @@ namespace Vertx
 			/// <param name="seconds">Seconds to wait</param>
 			public WaitForSeconds(float seconds) => Seconds = seconds;
 		}
+
 		#endregion
-		
+
 		private const float initialWaitTimeMin = 0;
 		private const float initialWaitTimeMax = 5;
-		
-		private const float holdTimeMin = 5;
+
+		private const float holdTimeMin = 2;
 		private const float holdTimeMax = 10;
-		
+
 		private const float waitTimeMin = 0;
-		private const float waitTimeMax = 10;
+		private const float waitTimeMax = 120;
+
+		private Image[] kittenVisualElements;
+
+		private const float emergeTime = 0.5f;
+		private const float leaveTime = 1f;
+		private readonly AnimationCurve curve = AnimationCurve.EaseInOut(0, 1, 1, 0);
 
 		IEnumerator IterateOnUpdate()
 		{
+			#if VERBOSE_DEBUGGING
 			Debug.Log("Start");
+			#endif
+
 			float initialWait = Random.Range(initialWaitTimeMin, initialWaitTimeMax);
 			yield return new WaitForSeconds(initialWait);
+
+			#if VERBOSE_DEBUGGING
 			Debug.Log($"Waited for {initialWait} seconds");
+			#endif
+
 			while (true)
 			{
+				#if VERBOSE_DEBUGGING
+				Debug.Log("Emerge");
+				#endif
+
 				//KITTEN EMERGES
-				List<VisualElement> rootContexts = DiscoverAllRootContexts();
-				//TODO insert 
+				List<RootWithName> rootContexts = DiscoverAllRootContexts();
+				if (rootContexts == null)
+					yield break;
+
+				int randomIndex = Random.Range(0, rootContexts.Count);
+				#if VERBOSE_DEBUGGING
+				Debug.Log(rootContexts[randomIndex].name);
+				#endif
+				VisualElement randomRoot = rootContexts[randomIndex].root;
+
+				Image kittenVisualElement = kittenVisualElements[Random.Range(0, kittenVisualElements.Length)];
 				
+				randomRoot.Add(kittenVisualElement);
+				float w = kittenVisualElement.image.width;
+				float h = kittenVisualElement.image.height;
+				kittenVisualElement.style.width = w;
+				kittenVisualElement.style.height = h;
+
+				kittenVisualElement.style.bottom = StyleKeyword.None;
+				kittenVisualElement.style.top = StyleKeyword.None;
+				kittenVisualElement.style.left = StyleKeyword.None;
+				kittenVisualElement.style.right = StyleKeyword.None;
+
+				int xRandom = Mathf.RoundToInt(Random.value);
+				Action<float> setX;
+				if (xRandom == 0)
+				{
+					setX = v => kittenVisualElement.style.left = v;
+					Rect rect = kittenVisualElement.uv;
+					rect.width = 1;
+					kittenVisualElement.uv = rect;
+				}
+				else
+				{
+					setX = v => kittenVisualElement.style.right = v;
+					Rect rect = kittenVisualElement.uv;
+					rect.width = -1;
+					kittenVisualElement.uv = rect;
+				}
+
+				int yRandom = Mathf.RoundToInt(Random.value);
+				Action<float> setY;
+				if (yRandom == 0)
+				{
+					setY = v => kittenVisualElement.style.top = v;
+					Rect rect = kittenVisualElement.uv;
+					rect.height = -1;
+					kittenVisualElement.uv = rect;
+				}
+				else
+				{
+					setY = v => kittenVisualElement.style.bottom = v;
+					Rect rect = kittenVisualElement.uv;
+					rect.height = 1;
+					kittenVisualElement.uv = rect;
+				}
+
+				setX(0);
+				setY(0);
+
+				{
+					//Interpolate the kitten to be visible
+					float startInTime = Time.realtimeSinceStartup;
+					while (Time.realtimeSinceStartup - startInTime < emergeTime)
+					{
+						float time = Time.realtimeSinceStartup - startInTime;
+						float value = curve.Evaluate(time / emergeTime);
+						setX(value * -w);
+						setY(value * -h);
+						yield return null;
+					}
+
+					setX(0);
+					setY(0);
+				}
+
+//				while (true) //Use this code to debug with the kitten sticking around forever
+//				{
+//					yield return null;
+//				}
+
 				//WAIT FOR KITTEN TO LEAVE
 				float hold = Random.Range(holdTimeMin, holdTimeMax);
 				yield return new WaitForSeconds(hold);
-				//TODO remove
-				
+
+				//KITTEN LEAVES
+				#if VERBOSE_DEBUGGING
+				Debug.Log("Leave");
+				#endif
+
+
+				{
+					//Interpolate the kitten to be outside the border of the window
+					float startOutTime = Time.realtimeSinceStartup;
+					while (Time.realtimeSinceStartup - startOutTime < leaveTime)
+					{
+						float time = Time.realtimeSinceStartup - startOutTime;
+						float value = 1 - curve.Evaluate(time / leaveTime);
+						setX(value * -w);
+						setY(value * -h);
+						yield return null;
+					}
+				}
+
+				kittenVisualElement.RemoveFromHierarchy();
+
+
 				//WAIT FOR NEXT KITTEN TO EMERGE
 				float wait = Random.Range(waitTimeMin, waitTimeMax);
 				yield return new WaitForSeconds(wait);
 			}
+
 			// ReSharper disable once IteratorNeverReturns
 		}
+
 		#region Helpers
+
 		private static Texture2D LoadTextureFromString(string s)
 		{
 			byte[] rawTextureData = Convert.FromBase64String(s);
@@ -114,8 +271,23 @@ namespace Vertx
 			tex.LoadImage(rawTextureData);
 			return tex;
 		}
-		
-		static List<VisualElement> DiscoverAllRootContexts()
+
+		/// <summary>
+		/// This struct exists so I can debug the random window, not for any other purpose.
+		/// </summary>
+		private struct RootWithName
+		{
+			public readonly string name;
+			public readonly VisualElement root;
+
+			public RootWithName(string n, VisualElement vE)
+			{
+				name = n;
+				root = vE;
+			}
+		}
+
+		static List<RootWithName> DiscoverAllRootContexts()
 		{
 			Type uiElementsUtilityType = Type.GetType("UnityEngine.UIElements.UIElementsUtility,UnityEngine");
 			if (!DebugRelevantError(uiElementsUtilityType, "UnityEngine.UIElements.UIElementsUtility", "type"))
@@ -124,7 +296,7 @@ namespace Vertx
 			Type panelType = Type.GetType("UnityEngine.UIElements.Panel,UnityEngine");
 			if (!DebugRelevantError(panelType, "UnityEngine.UIElements.Panel", "type"))
 				return null;
-			
+
 			Type dictionaryType = typeof(KeyValuePair<,>);
 			Type genericDictionaryType = dictionaryType.MakeGenericType(typeof(int), panelType);
 			PropertyInfo kvpValueProperty = genericDictionaryType.GetProperty("Value", BindingFlags.Public | BindingFlags.Instance);
@@ -136,21 +308,27 @@ namespace Vertx
 				return null;
 
 			PropertyInfo visualTreeProperty = panelType.GetProperty("visualTree", BindingFlags.Public | BindingFlags.Instance);
-			if (!DebugRelevantError(kvpValueProperty, "Panel / BaseVisualElementPanel.visualTree", "Property"))
+			if (!DebugRelevantError(visualTreeProperty, "Panel / BaseVisualElementPanel.visualTree", "Property"))
+				return null;
+
+			PropertyInfo nameProperty = panelType.GetProperty("name", BindingFlags.NonPublic | BindingFlags.Instance);
+			if (!DebugRelevantError(nameProperty, "Panel.name", "Property"))
 				return null;
 
 			IEnumerator enumerator = (IEnumerator) GetPanelsIteratorMethod.Invoke(null, null);
 
-			List<VisualElement> roots = new List<VisualElement>();
+			List<RootWithName> roots = new List<RootWithName>();
 			//Get all panels' root VisualElements to inject content into
 			while (enumerator.MoveNext())
 			{
 				object enumeratorCurrent = enumerator.Current;
 				object panel = kvpValueProperty.GetValue(enumeratorCurrent);
-				VisualElement visualTreeRoot = visualTreeProperty.GetValue(panel) as VisualElement;
-				if(visualTreeRoot == null) continue;
-				roots.Add(visualTreeRoot);
+				string name = (string) nameProperty.GetValue(panel);
+				if (name.Equals("Toolbar")) continue; // Avoid adding kittens to the toolbar because you might struggle to turn off kittens :P
+				if (!(visualTreeProperty.GetValue(panel) is VisualElement visualTreeRoot)) continue;
+				roots.Add(new RootWithName(name, visualTreeRoot));
 			}
+
 			return roots;
 
 			bool DebugRelevantError(object o, string name, string type)
@@ -160,9 +338,11 @@ namespace Vertx
 					Debug.LogError($"{type} {name} not found.");
 					return false;
 				}
+
 				return true;
 			}
 		}
+
 		#endregion
 	}
 }
