@@ -53,6 +53,8 @@ namespace Vertx
 		{
 			DestroyImmediate(_iconContent.image);
 			RemoveAllKittensFromHierarchies();
+			foreach (Image kittenVisualElement in kittenVisualElements)
+				DestroyImmediate(kittenVisualElement.image);
 		}
 
 		public override void OnActivate()
