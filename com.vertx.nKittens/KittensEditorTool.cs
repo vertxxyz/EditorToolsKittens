@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.EditorTools;
@@ -28,6 +29,7 @@ namespace Vertx
 			for (int i = 0; i < kittenVisualElements.Length; i++)
 			{
 				Texture2D kitten = LoadTextureFromString(kittens[i].Image);
+				kitten.name = $"Kitten {i}";
 				kittenVisualElements[i] = new Image
 				{
 					image = kitten,
@@ -38,6 +40,13 @@ namespace Vertx
 					}
 				};
 			}
+			
+			#if UNITY_2019_2_OR_NEWER
+			EditorTools.activeToolChanged += OnToolChange;
+			EditorTools.activeToolChanging += OnToolChanging;
+			if (EditorTools.IsActiveTool(this))
+				Activate();
+			#endif
 		}
 
 		[Shortcut("Kittens!", KeyCode.K, ShortcutModifiers.Action)]
@@ -55,18 +64,51 @@ namespace Vertx
 			RemoveAllKittensFromHierarchies();
 			foreach (Image kittenVisualElement in kittenVisualElements)
 				DestroyImmediate(kittenVisualElement.image);
+			
+			#if UNITY_2019_2_OR_NEWER
+			EditorTools.activeToolChanged -= OnToolChange;
+			EditorTools.activeToolChanging -= OnToolChanging;
+			#endif
 		}
-
-		public override void OnActivate()
+		
+		#if UNITY_2019_2_OR_NEWER
+		void OnToolChange()
 		{
+			if (EditorTools.IsActiveTool(this))
+				Activate();
+		}
+		
+		void OnToolChanging()
+		{
+			if (EditorTools.IsActiveTool(this))
+				Deactivate();
+		}
+		#endif
+
+		#if !UNITY_2019_2_OR_NEWER
+		public override void OnActivate() => Activate();
+		
+		public override void OnDeactivate() => Deactivate();
+		#endif
+
+		void Activate()
+		{
+			#if VERBOSE_DEBUGGING
+			Debug.Log("Activate");
+			#endif
+			
 			iterateOnUpdate = IterateOnUpdate();
 			updateStartTime = Time.realtimeSinceStartup;
 			waitToTime = -1;
 			EditorApplication.update += Update;
 		}
 
-		public override void OnDeactivate()
+		void Deactivate()
 		{
+			#if VERBOSE_DEBUGGING
+			Debug.Log("Deactivate");
+			#endif
+			
 			iterateOnUpdate = null;
 			EditorApplication.update -= Update;
 			RemoveAllKittensFromHierarchies();
@@ -81,7 +123,6 @@ namespace Vertx
 		private void Update()
 		{
 			float updateTime = Time.realtimeSinceStartup - updateStartTime;
-
 			if (waitToTime > updateTime)
 				return;
 
@@ -157,6 +198,8 @@ namespace Vertx
 				Debug.Log(rootContexts[randomIndex].name);
 				#endif
 				VisualElement randomRoot = rootContexts[randomIndex].root;
+				//Images don't render without doing this in 2019.2
+				randomRoot = randomRoot.Children().Last();
 
 				Image kittenVisualElement = kittenVisualElements[Random.Range(0, kittenVisualElements.Length)];
 				
